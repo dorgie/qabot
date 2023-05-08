@@ -5,5 +5,5 @@
 cd `dirname $0`
 . env/bin/activate
 . env.sh
-python index.py $1
+python index.py "$@"
 
