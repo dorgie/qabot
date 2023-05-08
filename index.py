@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import pickle
 
 import concurrent.futures
@@ -18,9 +19,14 @@ from langchain.embeddings import OpenAIEmbeddings
 
 
 def create_index(input_file: str, output_file: str) -> None:
-    text = open(input_file, encoding='utf8').read()
-    text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=500, chunk_overlap=100)
-    texts = text_splitter.split_text(text)
+    if input_file.endswith('.txt'):
+        text = open(input_file, encoding='utf8').read()
+        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=500, chunk_overlap=100)
+        texts = text_splitter.split_text(text)
+    elif input_file.endswith('.json'):
+        texts = json.load(open(input_file, encoding='utf8'))
+    else:
+        raise ValueError(f'unknown file type: {input_file}')
     print(f'split into {len(texts)} chunks')
     embeddings = OpenAIEmbeddings(client=None)
     with concurrent.futures.ThreadPoolExecutor() as executor:
