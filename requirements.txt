@@ -2,3 +2,6 @@ python-telegram-bot
 openai
 langchain
 tiktoken
+beautifulsoup4
+unstructured
+pytesseract

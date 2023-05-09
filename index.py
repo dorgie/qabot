@@ -16,21 +16,27 @@ from langchain.embeddings.base import Embeddings
 from langchain.schema import BaseRetriever, Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
+from langchain.document_loaders import UnstructuredURLLoader
 
+def embed(texts: List[str]) -> np.ndarray:
+    embeddings = OpenAIEmbeddings(client=None)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        return np.array(list(executor.map(embeddings.embed_query, texts)))
+
+def split(text: str) -> List[str]:
+    text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=1000, chunk_overlap=100)
+    return text_splitter.split_text(text)
 
 def create_index(input_file: str, output_file: str) -> None:
     if input_file.endswith('.txt'):
         text = open(input_file, encoding='utf8').read()
-        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=500, chunk_overlap=100)
-        texts = text_splitter.split_text(text)
+        texts = split(text)
     elif input_file.endswith('.json'):
         texts = json.load(open(input_file, encoding='utf8'))
     else:
         raise ValueError(f'unknown file type: {input_file}')
     print(f'split into {len(texts)} chunks')
-    embeddings = OpenAIEmbeddings(client=None)
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        index = np.array(list(executor.map(embeddings.embed_query, texts)))
+    index = embed(texts)
     with open(output_file, 'wb') as f:
         pickle.dump({'index': index, 'texts': texts}, f)
 
@@ -55,6 +61,15 @@ class MyKNNRetriever(BaseRetriever, BaseModel):
         texts = data['texts']
         embeddings = OpenAIEmbeddings(client=None)
         return cls(embeddings=embeddings, index=index, texts=texts, **kwargs)
+
+    @classmethod
+    def from_url(cls, url: str) -> MyKNNRetriever:
+        urls = [url]
+        loader = UnstructuredURLLoader(urls=urls)
+        data = loader.load()
+        texts = split(data[0].page_content)
+        index = embed(texts)
+        return cls(embeddings=OpenAIEmbeddings(client=None), index=index, texts=texts)
 
     def get_relevant_documents(self, query: str) -> List[Document]:
         query_embeds = np.array(self.embeddings.embed_query(query))
