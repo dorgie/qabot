@@ -162,4 +162,4 @@ cython_debug/
 
 env.sh
 doc.txt
-index.pkl
+*.pkl
