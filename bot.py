@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import datetime
 import os
 
 from telegram import Update
@@ -18,7 +19,8 @@ qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retrieve
 
 def log(update: Update):
     m = update.message # type: ignore
-    print(f'[{m.chat_id}] {m.from_user.first_name} {m.from_user.last_name} {m.from_user.username}: {m.text}') # type: ignore
+    now = datetime.datetime.now()
+    print(f'{now} [{m.chat_id}] {m.from_user.first_name} {m.from_user.last_name} {m.from_user.username}: {m.text}') # type: ignore
 
 async def auth(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user # type: ignore
@@ -36,7 +38,13 @@ async def q(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await auth(update, context):
         return
     query = update.message.text.replace('/q', '').strip() # type: ignore
-    text = context.chat_data.get('qa', qa).run(query) # type: ignore
+    if 'index' not in context.chat_data: # type: ignore
+        chain = qa
+    else:
+        index = context.chat_data['index'] # type: ignore
+        r = MyKNNRetriever(**index)
+        chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=r, verbose=True, return_source_documents=False)
+    text = chain.run(query) # type: ignore
     await update.message.reply_text(text) # type: ignore
 
 async def index_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -45,7 +53,8 @@ async def index_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     url = update.message.text.replace('/index', '').strip() # type: ignore
     r = MyKNNRetriever.from_url(url)
-    context.chat_data['qa'] = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=r, verbose=True, return_source_documents=False) # type: ignore
+    context.chat_data['index'] = {'index': r.index, 'texts': r.texts} # type: ignore
+    #context.chat_data['qa'] = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=r, verbose=True, return_source_documents=False) # type: ignore
     text = f'indexed {len(r.texts)} documents'
     await update.message.reply_text(text) # type: ignore
 

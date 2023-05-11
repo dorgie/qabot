@@ -45,10 +45,10 @@ def load_index(path: str) -> dict:
         return pickle.load(f)
 
 class MyKNNRetriever(BaseRetriever, BaseModel):
-    embeddings: Embeddings
+    embeddings: Embeddings = OpenAIEmbeddings(client=None)
     index: Any
     texts: List[str]
-    k: int = 4
+    k: int = 3
     relevancy_threshold: Optional[float] = None
 
     class Config:
