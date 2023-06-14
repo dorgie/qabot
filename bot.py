@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import datetime
+import logging
 import os
 
 from telegram import Update
@@ -20,7 +21,7 @@ qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retrieve
 def log(update: Update):
     m = update.message # type: ignore
     now = datetime.datetime.now()
-    print(f'{now} [{m.chat_id}] {m.from_user.first_name} {m.from_user.last_name} {m.from_user.username}: {m.text}') # type: ignore
+    logging.info(f'{now} [{m.chat_id}] {m.from_user.first_name} {m.from_user.last_name} {m.from_user.username}: {m.text}') # type: ignore
 
 async def auth(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user # type: ignore
@@ -51,7 +52,8 @@ async def index_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     log(update)
     if not await auth(update, context):
         return
-    url = update.message.text.replace('/index', '').strip() # type: ignore
+    #url = update.message.text.replace('/index', '').strip() # type: ignore
+    url = context.args[0]
     r = MyKNNRetriever.from_url(url)
     context.chat_data['index'] = {'index': r.index, 'texts': r.texts} # type: ignore
     #context.chat_data['qa'] = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=r, verbose=True, return_source_documents=False) # type: ignore
